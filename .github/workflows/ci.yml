@@ -1,0 +1,50 @@
+name: CI
+
+# Docs-only changes skip CI (paths-ignore below). For one-off skips of any
+# change, GitHub honors [skip ci] / [ci skip] in the head commit message.
+on:
+  push:
+    branches: [master, main, develop, 'feat/**']
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Test
+        run: pnpm -r test
+        # Pin both engines to an unroutable port: CI tests must never reach a
+        # real ComfyUI or cloud.comfy.org (boot-time compat probes, seeded
+        # cloud keys). Deterministic offline runs, no accidental egress.
+        env:
+          COMFY_LOCAL_URL: http://127.0.0.1:1
+          COMFY_CLOUD_API_URL: http://127.0.0.1:1
+
+      - name: Build
+        run: pnpm build

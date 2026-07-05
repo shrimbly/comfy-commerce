@@ -1,0 +1,32 @@
+{
+  "name": "comfy-commerce",
+  "private": true,
+  "version": "0.1.2",
+  "description": "Link a Shopify store, AI-edit product media (local ComfyUI or Comfy Cloud), review every edit, publish back \u2014 with a mandatory human review gate.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "WEB_PORT=5180 pnpm -r --parallel --stream dev",
+    "dev:server": "pnpm --filter @comfy-commerce/server dev",
+    "dev:web": "pnpm --filter @comfy-commerce/web dev",
+    "build": "pnpm -r typecheck && pnpm --filter @comfy-commerce/web build",
+    "start": "pnpm --filter @comfy-commerce/server start",
+    "dist:desktop:all": "bash scripts/build-all.sh",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.27.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "electron",
+      "esbuild"
+    ]
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0",
+    "typescript": "^6.0.3"
+  }
+}

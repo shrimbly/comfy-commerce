@@ -1,0 +1,71 @@
+appId: org.comfy.commerce
+productName: Comfy Commerce
+directories:
+  output: dist
+  buildResources: build
+
+# Production deps (better-sqlite3, @resvg/resvg-js) are collected automatically;
+# only the bundled main/preload need listing here.
+files:
+  - out/**
+  - package.json
+
+# .node addons can't load from inside asar — unpack them.
+asarUnpack:
+  - "**/*.node"
+  - "node_modules/better-sqlite3/**"
+  - "node_modules/@resvg/**"
+
+# Ship the built SPA as an unpacked resource the broker serves over loopback.
+extraResources:
+  - from: ../web/dist
+    to: web/dist
+
+# Do NOT rebuild native deps in place — that would compile better-sqlite3 against
+# the Electron ABI inside the shared pnpm store and break the repo's Node-ABI copy
+# (used by `pnpm test`). Instead, after packing, scripts/after-pack.cjs downloads
+# the Electron-ABI better-sqlite3 prebuild for the target and swaps the .node in.
+npmRebuild: false
+afterPack: ./scripts/after-pack.cjs
+
+# Auto-update is out of scope for now. With no publish provider, electron-builder
+# crashes generating update metadata (createUpdateInfoTasks → null provider),
+# especially when building outside a git checkout. Disable update-info entirely.
+publish: null
+
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.graphics-design
+  # Sign with hardened runtime and notarize. Credentials come from env:
+  # CSC_LINK / CSC_KEY_PASSWORD (Developer ID .p12) for signing, and
+  # APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID for notarization —
+  # set as repo secrets in CI. When the env is absent (local dev builds,
+  # forks without secrets) electron-builder skips notarization with a warning
+  # and falls back to keychain discovery for signing, so builds still work.
+  hardenedRuntime: true
+  notarize: true
+
+# Installer window: the workflow-thumbnail aurora gradient as background
+# (regenerate with scripts/make-dmg-background.mjs — retina TIFF), app icon
+# and Applications on either side of the baked-in arrow.
+dmg:
+  background: build/dmg-background.tiff
+  window:
+    width: 540
+    height: 380
+  iconSize: 96
+  contents:
+    - x: 130
+      y: 180
+    - x: 410
+      y: 180
+      type: link
+      path: /Applications
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64

@@ -1,0 +1,263 @@
+@import '@fontsource-variable/geist';
+@import 'tailwindcss';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* ── Design tokens ──────────────────────────────────────────────────
+   Typography: Geist — 16/14 body (regular & medium), 18 titles.
+   Color: primary #181818, secondary #6A6A6A, neutral surfaces.
+   Spacing: 4px grid. Radius: 8–40px. Icons: 18px / 1.5 stroke / 24px box.
+──────────────────────────────────────────────────────────────────── */
+
+:root {
+  --canvas: #f9f8f5;
+  --surface: #ffffff;
+  --surface-2: #f4f4f4;
+  --ink: #181818;
+  --ink-soft: #6a6a6a;
+  --ink-faint: #9d9d9d;
+  --line: #e8e8e8;
+  --line-strong: #d9d9d9;
+  --accent: #181818;
+  --accent-deep: #2e2e2e;
+  --accent-soft: #ededed;
+  --accent-ink: #ffffff;
+  --success: #2f9e4f;
+  --success-soft: #e3efe4;
+  /* Filled approve/confirm CTAs (white text). Separate from --success so status
+     dots and labels can stay lighter without washing out the button. */
+  --success-strong: #2f9e4f;
+  --warn: #94701a;
+  --warn-soft: #f7edd2;
+  --danger: #b14438;
+  --danger-soft: #fae3e0;
+  --violet: #6c55ad;
+  --violet-soft: #ebe6f7;
+  --info: #3a6ea5;
+  --info-soft: #e0ebf7;
+  --shadow-soft: 0 1px 2px rgb(24 24 24 / 0.03), 0 4px 16px -8px rgb(24 24 24 / 0.08);
+  --shadow-lift: 0 2px 4px rgb(24 24 24 / 0.04), 0 16px 40px -16px rgb(24 24 24 / 0.18);
+
+  /* Subtle mesh-gradient backdrop — faint blooms in our existing accent hues
+     (violet / info / warn / success), painted over the canvas. Kept very low
+     alpha so it reads as a gentle tint, not a feature. */
+  /* Near-neutral mesh: desaturated slate/taupe tints close to the warm canvas,
+     with a gentle cool → warm diagonal so it reads as soft tonal shading rather
+     than colour. */
+  --bg-mesh:
+    radial-gradient(60% 52% at 12% 4%, rgb(112 120 134 / 0.17), transparent 70%),
+    radial-gradient(56% 48% at 88% 0%, rgb(120 124 140 / 0.15), transparent 70%),
+    radial-gradient(54% 52% at 98% 98%, rgb(140 128 112 / 0.14), transparent 70%),
+    radial-gradient(50% 50% at 2% 100%, rgb(124 120 114 / 0.13), transparent 70%);
+  --bg-noise-opacity: 0.15;
+  --bg-noise-blend: multiply;
+}
+
+[data-theme='dark'] {
+  /* Lifted off pure black with a faint cool tint; canvas stays a clear step
+     below surface so the sidebar/cards still read as raised layers. */
+  --canvas: #16171c;
+  --surface: #1f2128;
+  --surface-2: #282b33;
+  --ink: #f2f2f2;
+  --ink-soft: #a3a3a3;
+  --ink-faint: #a0a0a0;
+  --line: #30333b;
+  --line-strong: #3d414b;
+  --accent: #f2f2f2;
+  --accent-deep: #dcdcdc;
+  --accent-soft: #2d3038;
+  --accent-ink: #181818;
+  --success: #8fc09c;
+  --success-soft: #20301f;
+  /* Deeper than --success so the filled approve button keeps contrast with its
+     white label on the dark surface (the pastel --success washed it out). */
+  --success-strong: #2a8246;
+  --warn: #d8b45e;
+  --warn-soft: #383017;
+  --danger: #d98b80;
+  --danger-soft: #3c2420;
+  --violet: #b9aae6;
+  --violet-soft: #2b2440;
+  --info: #8fb6e4;
+  --info-soft: #1d2b41;
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px -8px rgb(0 0 0 / 0.4);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.35), 0 16px 40px -16px rgb(0 0 0 / 0.6);
+
+  /* Dark mesh: the same accent hues, lifted a touch brighter so the blooms read
+     against the deep canvas without ever looking lit. */
+  --bg-mesh:
+    radial-gradient(58% 50% at 14% 6%, rgb(185 170 230 / 0.06), transparent 72%),
+    radial-gradient(54% 46% at 86% 2%, rgb(143 182 228 / 0.05), transparent 72%),
+    radial-gradient(52% 50% at 96% 96%, rgb(216 180 94 / 0.035), transparent 72%),
+    radial-gradient(48% 48% at 4% 98%, rgb(143 192 156 / 0.04), transparent 72%);
+  --bg-noise-opacity: 0.07;
+  --bg-noise-blend: normal;
+}
+
+/* In dark mode the sidebar's secondary text dims out against the dark surface,
+   so brighten its ink-soft locally. Scoped to the sidebar (theme is @theme
+   inline, so text-ink* utilities read this --ink-soft var directly). */
+[data-theme='dark'] aside {
+  --ink-soft: #c4c4c4;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-strong: var(--success-strong);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+
+  /* Type scale: 14 / 16 body, 18 title — nothing else. */
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
+  --text-base: 16px;
+  --text-base--line-height: 24px;
+  --text-lg: 18px;
+  --text-lg--line-height: 24px;
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-lift: var(--shadow-lift);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Base ────────────────────────────────────────────────────────── */
+
+html {
+  background: var(--canvas);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--ink);
+  background: var(--canvas);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* The app's living backdrop: a soft mesh gradient over the canvas, with a faint
+   film of grain laid above it but below the UI (negative-z pseudo inside an
+   isolated stacking context) so the flat fills never band. */
+.app-bg {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--canvas);
+  background-image: var(--bg-mesh);
+}
+.app-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--bg-noise-opacity);
+  /* Light blends the grain as multiply (dark specks — the only direction that
+     reads on a near-white canvas); dark keeps a plain normal blend so its light
+     specks pop. */
+  mix-blend-mode: var(--bg-noise-blend, normal);
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='180'%20height='180'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.85'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+/* Theme changes cross-fade gently. */
+html[data-theme] body,
+html[data-theme] body * {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 240ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* A styled field (e.g. the search box) whose WRAPPER owns the focus ring, so a
+   nested input's outline doesn't mis-hug the inner element. Put `field-focus`
+   on the container; its inner control then defers its own outline to the box. */
+.field-focus:has(:focus-visible) {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.field-focus :focus-visible {
+  outline: none;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* Smooth (squircle) corners site-wide — layers onto every existing
+   border-radius, keeping borders and shadows intact. Chromium renders the
+   squircle; other browsers fall back to normal rounded corners.
+   `squircle` === superellipse(2): the convex curve between round and square. */
+*,
+::before,
+::after {
+  corner-shape: squircle;
+}
+
+/* Keep genuinely circular elements (pills, status dots, the spinner) round. */
+.rounded-full {
+  corner-shape: round;
+}
+
+/* A squircle hugs the box more than a circular arc, so it reads as a smaller
+   radius than the rounded-corner fallback. Where the squircle actually renders,
+   scale the radius scale up (~1.8×) so its perceived roundness matches. */
+@supports (corner-shape: squircle) {
+  :root {
+    --radius-sm: 0.45rem;
+    --radius-md: 0.675rem;
+    --radius-lg: 0.9rem;
+    --radius-xl: 1.35rem;
+    --radius-2xl: 1.8rem;
+  }
+}
+
+/* ── macOS desktop window chrome ─────────────────────────────────────
+   The desktop shell hides the title bar and inlays the traffic-light buttons
+   (see desktop/src/main.ts). A full-width strip sits above the sidebar + content
+   to house the lights and make the whole top of the window draggable. The strip
+   is hidden (zero height) in the browser and on Windows. */
+.app-titlebar {
+  display: none;
+}
+html[data-desktop='mac'] .app-titlebar {
+  display: block;
+  height: 1.75rem; /* 28px — the standard macOS traffic-light band */
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}

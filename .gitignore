@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.local
+.env
+*.sqlite
+*.sqlite-journal
+*.db
+.DS_Store
+*.log
+.vite/
+coverage/
+.e2e-shots/
+data/
+secret.key

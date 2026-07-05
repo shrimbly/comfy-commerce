@@ -1,0 +1,41 @@
+# Comfy Commerce — Shopify app configuration (template)
+#
+# This is the CANONICAL app definition for a Comfy Commerce install. Every fork
+# creates its OWN app in its OWN Shopify organization from this template — there
+# is no shared, centrally-hosted app (that would force an embedded/hosted SaaS
+# and expose a single shared secret). The app only ever touches products, media
+# and files; it never requests customer or order data.
+#
+# Two ways to use it — see docs/SHOPIFY_SETUP.md:
+#   1. Manual (simplest): create an app at https://dev.shopify.com, apply the
+#      scopes below, install it on your store, copy the Client ID + Client
+#      secret, then paste them into the studio's Connect → App credentials
+#      dialog (or POST them to /api/connect/shopify/credentials).
+#   2. Shopify CLI:  `shopify app config link`  (links/creates an app from this
+#      file and fills in client_id), then  `shopify app deploy`.
+#
+# client_id is public and safe to commit; the client SECRET is never stored here
+# or anywhere in the repo — it lives only in the broker, encrypted at rest.
+
+client_id = "REPLACE_WITH_YOUR_CLIENT_ID"   # filled by `shopify app config link`, or just paste creds into Connect → App credentials
+name = "Comfy Commerce"
+application_url = "http://localhost:4000"
+embedded = false
+
+[access_scopes]
+# Product-media editing only — no customer/order/PII scopes are ever requested.
+scopes = "read_products,write_products,write_files"
+
+[auth]
+# Used only by the one-click OAuth connect path. The recommended App-credentials
+# path (client-credentials grant) does not use a redirect. Keep the host in sync
+# with APP_URL in .env if you change the broker's port/URL.
+redirect_urls = [
+  "http://localhost:4000/api/connect/shopify/callback"
+]
+
+[webhooks]
+api_version = "2026-01"
+
+[build]
+include_config_on_deploy = true

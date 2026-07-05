@@ -1,0 +1,118 @@
+name: release
+
+# Every push to master builds the unsigned desktop installers (macOS dmg on a
+# mac runner, Windows nsis exe on a Windows runner — better-sqlite3's Windows
+# binary can't be produced on macOS) and publishes them to the GitHub release
+# for the current desktop version, creating the release + v<version> tag on
+# first sight. Re-pushing the same version replaces the assets in place, so
+# cutting a NEW release = bump desktop/package.json's version, merge to master.
+# macOS can still be built locally/signed via `pnpm dist:desktop:all`.
+on:
+  push:
+    branches: [master]
+    # Docs-only merges must not rebuild installers — the two desktop runners
+    # (macOS bills at a 10x minute multiplier) are the expensive part of CI.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# One release pipeline at a time; queued, never cancelled mid-publish.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # Gate the (expensive, 10x-billed) installer builds on a green typecheck +
+  # test run — a release must never ship installers from a red tree.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm -r typecheck
+      - name: Test
+        run: pnpm -r test
+        # Pin both engines to an unroutable port: CI tests must never reach a
+        # real ComfyUI or cloud.comfy.org (boot-time compat probes, seeded
+        # cloud keys). Deterministic offline runs, no accidental egress.
+        env:
+          COMFY_LOCAL_URL: http://127.0.0.1:1
+          COMFY_CLOUD_API_URL: http://127.0.0.1:1
+
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            task: dist:mac
+          - os: windows-latest
+            task: dist:win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # macOS: signed (Developer ID .p12 from secrets) + notarized (Apple ID
+      # credentials from secrets; electron-builder.yml sets mac.notarize).
+      # If the secrets are unset (fork, or not yet configured) the empty env
+      # vars read as absent and electron-builder falls back to an unsigned,
+      # un-notarized build instead of failing.
+      - name: Build macOS installer (signed + notarized)
+        if: matrix.task == 'dist:mac'
+        run: pnpm --filter @comfy-commerce/desktop dist:mac
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      # Windows: unsigned (SmartScreen "Run anyway" is the accepted OSS norm;
+      # an OV/EV cert can be wired in later via WIN_CSC_LINK).
+      - name: Build Windows installer (unsigned)
+        if: matrix.task == 'dist:win'
+        run: pnpm --filter @comfy-commerce/desktop dist:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os }}
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.exe
+          # A build that produced no installer must fail loudly, not pass green.
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+      - name: Create or update the release for this version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v$(node -p "require('./desktop/package.json').version")"
+          gh release view "$tag" >/dev/null 2>&1 \
+            || gh release create "$tag" --title "Comfy Commerce $tag" --generate-notes
+          gh release upload "$tag" installers/* --clobber

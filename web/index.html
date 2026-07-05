@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Comfy Commerce</title>
+    <script>
+      // Apply the persisted theme before first paint to avoid a flash.
+      const saved = localStorage.getItem('cc-theme')
+      const system = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      document.documentElement.dataset.theme = saved === 'light' || saved === 'dark' ? saved : system
+      // In the macOS desktop shell the title bar is hidden and the traffic-light
+      // buttons sit over the content — flag it pre-paint so the sidebar reserves
+      // clearance for them without a layout flash. (preload runs before this.)
+      if (window.comfyDesktop && window.comfyDesktop.platform === 'darwin') {
+        document.documentElement.dataset.desktop = 'mac'
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

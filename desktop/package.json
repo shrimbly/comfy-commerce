@@ -1,0 +1,36 @@
+{
+  "name": "@comfy-commerce/desktop",
+  "version": "0.1.2",
+  "private": true,
+  "description": "Comfy Commerce desktop app \u2014 Electron shell that runs the broker in-process",
+  "productName": "Comfy Commerce",
+  "main": "out/main.cjs",
+  "scripts": {
+    "build:web": "pnpm --filter @comfy-commerce/web build",
+    "build:main": "node esbuild.mjs",
+    "start": "pnpm build:main && electron .",
+    "dist": "pnpm build:web && pnpm build:main && electron-builder",
+    "dist:mac": "pnpm build:web && pnpm build:main && electron-builder --mac",
+    "dist:win": "pnpm build:web && pnpm build:main && electron-builder --win",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "better-sqlite3": "^12.10.0"
+  },
+  "//optionalDependencies": "pnpm 10 doesn't auto-install @resvg/resvg-js's transitive platform binary, so declare it here for electron-builder to bundle. Win/Linux binaries are added when those targets are built.",
+  "optionalDependencies": {
+    "@resvg/resvg-js-darwin-arm64": "2.6.2",
+    "@resvg/resvg-js-win32-x64-msvc": "2.6.2"
+  },
+  "devDependencies": {
+    "@comfy-commerce/server": "workspace:*",
+    "@comfy-commerce/shared": "workspace:*",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.9.0",
+    "electron": "41.8.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.1",
+    "typescript": "^6.0.3"
+  }
+}
