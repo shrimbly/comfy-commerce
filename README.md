@@ -23,7 +23,9 @@ Local &nbsp;&bull;&nbsp; BYO Shopify app &nbsp;&bull;&nbsp; MIT
 
 <br />
 
-<a href="docs/assets/hero.mp4"><img alt="Comfy Commerce demo (click to play)" src="docs/assets/hero.jpg" width="840" /></a>
+<video src="https://github.com/shrimbly/comfy-commerce/raw/main/docs/assets/hero.mp4" poster="https://github.com/shrimbly/comfy-commerce/raw/main/docs/assets/hero.jpg" width="840" controls muted loop playsinline>
+  <img alt="Comfy Commerce demo" src="docs/assets/hero.jpg" width="840" />
+</video>
 
 </div>
 
