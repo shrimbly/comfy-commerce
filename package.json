@@ -1,7 +1,7 @@
 {
   "name": "comfy-commerce",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Link a Shopify store, AI-edit product media (local ComfyUI or Comfy Cloud), review every edit, publish back \u2014 with a mandatory human review gate.",
   "license": "MIT",
   "scripts": {

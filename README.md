@@ -57,7 +57,7 @@ Pick the engine per run; the Connectors page shows live availability.
 
 ## Download
 
-Grab the latest installer from the [**Releases**](https://github.com/shrimbly/comfy-shopify/releases/latest) page:
+Grab the latest installer from the [**Releases**](https://github.com/shrimbly/comfy-commerce/releases/latest) page:
 
 - **macOS** (Apple Silicon): the `.dmg`
 - **Windows** (x64): the `Setup .exe`

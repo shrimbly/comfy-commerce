@@ -1,15 +1,15 @@
 name: release
 
-# Every push to master builds the unsigned desktop installers (macOS dmg on a
-# mac runner, Windows nsis exe on a Windows runner — better-sqlite3's Windows
-# binary can't be produced on macOS) and publishes them to the GitHub release
-# for the current desktop version, creating the release + v<version> tag on
-# first sight. Re-pushing the same version replaces the assets in place, so
-# cutting a NEW release = bump desktop/package.json's version, merge to master.
+# Every push to main builds the desktop installers (macOS dmg on a mac runner,
+# Windows nsis exe on a Windows runner — better-sqlite3's Windows binary can't
+# be produced on macOS) and publishes them to the GitHub release for the current
+# desktop version, creating the release + v<version> tag on first sight.
+# Re-pushing the same version replaces the assets in place, so cutting a NEW
+# release = bump desktop/package.json's version and push to main.
 # macOS can still be built locally/signed via `pnpm dist:desktop:all`.
 on:
   push:
-    branches: [master]
+    branches: [main]
     # Docs-only merges must not rebuild installers — the two desktop runners
     # (macOS bills at a 10x minute multiplier) are the expensive part of CI.
     paths-ignore:
