@@ -23,7 +23,7 @@ Local &nbsp;&bull;&nbsp; BYO Shopify app &nbsp;&bull;&nbsp; MIT
 
 <br />
 
-<a href="docs/assets/hero.mp4"><img alt="Comfy Commerce demo (click to play)" src="docs/assets/hero.jpg" width="840" /></a>
+https://github.com/user-attachments/assets/46e76bd7-c635-4266-a998-9df7d28644f2
 
 </div>
 
