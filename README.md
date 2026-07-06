@@ -7,8 +7,6 @@
 ### AI Product-Media Studio for Shopify
 
 [![License](https://img.shields.io/badge/License-MIT-181818)](LICENSE)
-[![Node](https://img.shields.io/badge/Node-%E2%89%A520-3a424d?logo=node.js&logoColor=white)](https://nodejs.org)
-[![Built for Comfy Cloud](https://img.shields.io/badge/Engine-ComfyUI%20%C2%B7%20Comfy%20Cloud-535c65)](https://docs.comfy.org/development/cloud/overview)
 
 <br />
 
