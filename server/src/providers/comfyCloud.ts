@@ -34,21 +34,10 @@ const DEFAULT_JOB_TIMEOUT_MS = 900_000 // 15 minutes
 const OUTPUT_GRACE_POLLS = 8
 
 /**
- * Comfy Cloud credentials, resolved fresh per request. Transport is either the
- * OAuth sign-in (`Authorization: Bearer`) or a personal key (`X-API-Key`) —
- * the cloud accepts both. The raw comfy.org key rides along separately because
- * API nodes (partner models) bill via `extra_data`, not the request headers.
- */
-export interface CloudAuth {
-  headers: Record<string, string>
-  comfyOrgApiKey: string | null
-}
-
-/**
  * Comfy Cloud provider (https://cloud.comfy.org — docs.comfy.org/development/cloud).
  *
  * The Cloud API is wire-compatible with local ComfyUI plus cloud additions:
- * bearer/API-key auth, `GET /api/job/{id}/status` for polling, and `/api/view`
+ * `X-API-Key` auth, `GET /api/job/{id}/status` for polling, and `/api/view`
  * responding with a 302 to a signed download URL.
  */
 export class ComfyCloudProvider implements GenerationProvider {
@@ -60,12 +49,8 @@ export class ComfyCloudProvider implements GenerationProvider {
   constructor(
     private opts: {
       apiUrl: string
-      /**
-       * Resolve credentials fresh each call — a sign-in or key change takes
-       * effect with no restart, and a long poll loop picks up refreshed
-       * access tokens as it goes.
-       */
-      resolveAuth: () => Promise<CloudAuth | null>
+      /** Resolve the API key fresh each call — a UI change takes effect with no restart. */
+      resolveApiKey: () => string | null
       checkpoint?: string | undefined
       /** Total job-completion ceiling, in ms (how long to keep polling). */
       jobTimeoutMs?: number | undefined
@@ -73,19 +58,9 @@ export class ComfyCloudProvider implements GenerationProvider {
     },
   ) {}
 
-  /** Current credentials, or throw the standard not-configured error. */
-  private async auth(): Promise<CloudAuth> {
-    const auth = await this.opts.resolveAuth()
-    if (!auth) {
-      throw new Error('Comfy Cloud is not connected — sign in or add an API key (Connectors → Configure)')
-    }
-    return auth
-  }
-
-  /** Fresh transport headers (re-resolved so refreshed tokens are picked up). */
-  private async headers(extra: Record<string, string> = {}): Promise<Record<string, string>> {
-    const { headers } = await this.auth()
-    return { ...headers, ...extra }
+  /** The currently-configured API key (UI value or env seed), or null. */
+  private get apiKey(): string | null {
+    return this.opts.resolveApiKey()
   }
 
   /** How many status polls fit in the configured job ceiling. */
@@ -93,20 +68,20 @@ export class ComfyCloudProvider implements GenerationProvider {
     return Math.ceil((this.opts.jobTimeoutMs ?? DEFAULT_JOB_TIMEOUT_MS) / POLL_INTERVAL_MS)
   }
 
+  private headers(extra: Record<string, string> = {}): Record<string, string> {
+    return { 'X-API-Key': this.apiKey ?? '', ...extra }
+  }
+
   async availability() {
-    const auth = await this.opts.resolveAuth()
-    if (!auth) {
-      return {
-        available: false,
-        detail: 'Sign in to Comfy Cloud or add an API key (Connectors → Configure)',
-      }
+    if (!this.apiKey) {
+      return { available: false, detail: 'Add a Comfy Cloud API key (Connectors → Configure)' }
     }
     try {
       const res = await fetch(`${this.opts.apiUrl}/api/queue`, {
-        headers: auth.headers,
+        headers: this.headers(),
         signal: AbortSignal.timeout(4000),
       })
-      if (res.status === 401) return { available: false, detail: 'Comfy Cloud rejected the credentials' }
+      if (res.status === 401) return { available: false, detail: 'Comfy Cloud rejected the API key' }
       if (res.status === 429) return { available: false, detail: 'Comfy Cloud subscription inactive' }
       if (!res.ok) return { available: false, detail: `Comfy Cloud responded ${res.status}` }
       return { available: true, detail: null }
@@ -118,7 +93,7 @@ export class ComfyCloudProvider implements GenerationProvider {
   private async resolveCheckpoint(): Promise<string> {
     if (this.opts.checkpoint) return this.opts.checkpoint
     const res = await resilientFetch(`${this.opts.apiUrl}/api/object_info/CheckpointLoaderSimple`, {
-      headers: await this.headers(),
+      headers: this.headers(),
       timeoutMs: 15_000,
       retries: 2,
     })
@@ -139,7 +114,7 @@ export class ComfyCloudProvider implements GenerationProvider {
     form.append('overwrite', 'true')
     const upload = await resilientFetch(`${this.opts.apiUrl}/api/upload/image`, {
       method: 'POST',
-      headers: await this.headers(),
+      headers: this.headers(),
       body: form,
       timeoutMs: 60_000,
       retries: 2, // safe to retry — the upload uses overwrite:true
@@ -150,7 +125,7 @@ export class ComfyCloudProvider implements GenerationProvider {
   }
 
   async edit(request: EditRequest): Promise<EditResult> {
-    await this.auth() // fail fast, before fetching the input image
+    if (!this.apiKey) throw new Error('Comfy Cloud API key not configured')
 
     const input = await fetchInputImage(request.imageUrl, { signal: request.signal })
 
@@ -167,17 +142,15 @@ export class ComfyCloudProvider implements GenerationProvider {
       seedKey: request.seedKey,
       resolveCheckpoint: () => this.resolveCheckpoint(),
     })
-    const auth = await this.auth()
     const submit = await resilientFetch(`${this.opts.apiUrl}/api/prompt`, {
       method: 'POST',
-      headers: { ...auth.headers, 'Content-Type': 'application/json' },
-      // API nodes (partner models) read their billing credential from
-      // extra_data, not the request headers — without a comfy.org key they
-      // fail with "Please login first to use this node" even though the job
-      // itself is authorized. OAuth sign-in alone can't fill this in.
+      headers: this.headers({ 'Content-Type': 'application/json' }),
+      // API nodes (partner models) read their credentials from extra_data,
+      // not the request headers — without this they fail with "Please login
+      // first to use this node" even though the job itself is authorized.
       body: JSON.stringify({
         prompt: graph,
-        ...(auth.comfyOrgApiKey ? { extra_data: { api_key_comfy_org: auth.comfyOrgApiKey } } : {}),
+        extra_data: { api_key_comfy_org: this.apiKey },
       }),
       timeoutMs: 60_000,
       // No retries: a re-POST could enqueue a duplicate (billable) job.
@@ -195,22 +168,18 @@ export class ComfyCloudProvider implements GenerationProvider {
       await sleep(POLL_INTERVAL_MS)
       if (request.signal?.aborted) {
         // Best-effort: job-level cancel, falling back to queue interrupt.
-        // (Never let an auth hiccup here mask the Cancelled outcome.)
-        const cancelHeaders = await this.headers().catch(() => null)
-        if (cancelHeaders) {
-          await fetch(`${this.opts.apiUrl}/api/jobs/${promptId}/cancel`, {
-            method: 'POST',
-            headers: cancelHeaders,
-          }).catch(() => null)
-          await fetch(`${this.opts.apiUrl}/api/interrupt`, {
-            method: 'POST',
-            headers: cancelHeaders,
-          }).catch(() => null)
-        }
+        await fetch(`${this.opts.apiUrl}/api/jobs/${promptId}/cancel`, {
+          method: 'POST',
+          headers: this.headers(),
+        }).catch(() => null)
+        await fetch(`${this.opts.apiUrl}/api/interrupt`, {
+          method: 'POST',
+          headers: this.headers(),
+        }).catch(() => null)
         throw new Error('Cancelled')
       }
       const statusRes = await resilientFetch(`${this.opts.apiUrl}/api/job/${promptId}/status`, {
-        headers: await this.headers(),
+        headers: this.headers(),
         timeoutMs: 15_000,
         retries: 2,
         signal: request.signal,
@@ -241,7 +210,7 @@ export class ComfyCloudProvider implements GenerationProvider {
       if (!['completed', 'success'].includes(status)) continue
 
       const jobRes = await resilientFetch(`${this.opts.apiUrl}/api/jobs/${promptId}`, {
-        headers: await this.headers(),
+        headers: this.headers(),
         timeoutMs: 30_000,
         retries: 3,
         signal: request.signal,
@@ -263,7 +232,7 @@ export class ComfyCloudProvider implements GenerationProvider {
         view.searchParams.set('subfolder', file.subfolder)
         view.searchParams.set('type', file.type)
         const outputRes = await resilientFetch(view, {
-          headers: await this.headers(),
+          headers: this.headers(),
           redirect: 'follow',
           timeoutMs: 120_000, // generous — a single output (esp. video) can be large
           retries: 3,
@@ -285,7 +254,7 @@ export class ComfyCloudProvider implements GenerationProvider {
   }
 
   async caption(request: CaptionRequest): Promise<CaptionResult> {
-    await this.auth() // fail fast, before fetching the input image
+    if (!this.apiKey) throw new Error('Comfy Cloud API key not configured')
 
     const input = await fetchInputImage(request.imageUrl, { signal: request.signal })
     const imageName = await this.uploadImage(input.bytes, input.filename, input.mimeType)
@@ -296,14 +265,10 @@ export class ComfyCloudProvider implements GenerationProvider {
       hashSeed(request.seedKey),
     )
 
-    const auth = await this.auth()
     const submit = await resilientFetch(`${this.opts.apiUrl}/api/prompt`, {
       method: 'POST',
-      headers: { ...auth.headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: graph,
-        ...(auth.comfyOrgApiKey ? { extra_data: { api_key_comfy_org: auth.comfyOrgApiKey } } : {}),
-      }),
+      headers: this.headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ prompt: graph, extra_data: { api_key_comfy_org: this.apiKey } }),
       timeoutMs: 60_000,
       // No retries: a re-POST could enqueue a duplicate (billable) job.
       signal: request.signal,
@@ -318,17 +283,14 @@ export class ComfyCloudProvider implements GenerationProvider {
     for (let poll = 0; poll < this.maxPolls; poll++) {
       await sleep(POLL_INTERVAL_MS)
       if (request.signal?.aborted) {
-        const cancelHeaders = await this.headers().catch(() => null)
-        if (cancelHeaders) {
-          await fetch(`${this.opts.apiUrl}/api/jobs/${promptId}/cancel`, {
-            method: 'POST',
-            headers: cancelHeaders,
-          }).catch(() => null)
-        }
+        await fetch(`${this.opts.apiUrl}/api/jobs/${promptId}/cancel`, {
+          method: 'POST',
+          headers: this.headers(),
+        }).catch(() => null)
         throw new Error('Cancelled')
       }
       const statusRes = await resilientFetch(`${this.opts.apiUrl}/api/job/${promptId}/status`, {
-        headers: await this.headers(),
+        headers: this.headers(),
         timeoutMs: 15_000,
         retries: 2,
         signal: request.signal,
@@ -345,7 +307,7 @@ export class ComfyCloudProvider implements GenerationProvider {
       if (!['completed', 'success'].includes(status)) continue
 
       const jobRes = await resilientFetch(`${this.opts.apiUrl}/api/jobs/${promptId}`, {
-        headers: await this.headers(),
+        headers: this.headers(),
         timeoutMs: 30_000,
         retries: 3,
         signal: request.signal,

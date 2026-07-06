@@ -28,7 +28,6 @@ function settingsView(s: AppContext['settingsService']) {
   return {
     remoteComfyUrl: s.getRemoteComfyUrl(),
     cloudApiKey: s.getCloudApiKeyStatus(),
-    cloudOauth: s.getCloudOAuthStatus(),
   }
 }
 

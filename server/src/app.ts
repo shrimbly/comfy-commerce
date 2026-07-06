@@ -19,7 +19,6 @@ import { registerWebRoutes } from './routes/web.js'
 import { registerWebhookRoutes } from './routes/webhooks.js'
 import { createAssetStore } from './services/assetStore.js'
 import { createAudit } from './services/audit.js'
-import { createComfyAuthService } from './services/comfyAuthService.js'
 import { createEnrichmentService } from './services/enrichmentService.js'
 import { createRunService } from './services/runService.js'
 import { createSettingsService } from './services/settingsService.js'
@@ -42,8 +41,7 @@ export async function buildApp(env: Env = loadEnv()): Promise<BuildAppResult> {
   await seedBuiltinAssets(assetStore, env, (m) => console.log(m))
   const connectors = createConnectorRegistry(db, env)
   const settingsService = createSettingsService(db, env)
-  const comfyAuth = createComfyAuthService(env, settingsService)
-  const providers = createProviderRegistry(env, assetStore, settingsService, comfyAuth)
+  const providers = createProviderRegistry(env, assetStore, settingsService)
   const enrichmentService = createEnrichmentService(db)
   const storeService = createStoreService(db, env, connectors, audit, enrichmentService)
   const stagingService = createStagingService(db, env, connectors, storeService, audit, assetStore)
@@ -79,7 +77,6 @@ export async function buildApp(env: Env = loadEnv()): Promise<BuildAppResult> {
     providers,
     enrichmentService,
     settingsService,
-    comfyAuth,
     storeService,
     stagingService,
     workflowService,

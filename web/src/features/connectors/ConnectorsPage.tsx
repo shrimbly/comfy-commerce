@@ -1,4 +1,4 @@
-import { Cloud, ICON, IconBox, Settings, ShieldCheck, Unplug } from '../../lib/icons.js'
+import { ICON, IconBox, Settings, Unplug } from '../../lib/icons.js'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
@@ -9,9 +9,7 @@ import { PlusIcon } from '../../lib/animated-icons/PlusIcon.js'
 import { StoreAvatar } from '../../components/ui/StoreAvatar.js'
 import { useHover } from '../../lib/useHover.js'
 import {
-  useConnectComfyCloud,
   useConnectConfig,
-  useDisconnectComfyCloud,
   useProviders,
   useSettings,
   useStores,
@@ -96,87 +94,14 @@ function RemoteEngineDialog({ open, onClose }: { open: boolean; onClose: () => v
   )
 }
 
-/** The "Sign in with Comfy Cloud" block — one-click OAuth (no key to paste),
- *  and, when connected, who's signed in plus a sign-out. */
-function CloudSignInSection({
-  status,
-  onDone,
-}: {
-  status: NonNullable<ReturnType<typeof useSettings>['data']>['cloudOauth'] | undefined
-  onDone: () => void
-}) {
-  const connect = useConnectComfyCloud()
-  const disconnect = useDisconnectComfyCloud()
-  const connected = status?.connected ?? false
-
-  if (connected) {
-    return (
-      <div className="rounded-xl border border-line bg-surface-2 p-4">
-        <div className="flex items-center gap-2.5">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-success-soft text-success">
-            <ShieldCheck size={16} strokeWidth={1.5} />
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-medium">
-              {status?.email ? `Connected as ${status.email}` : 'Connected to Comfy Cloud'}
-            </p>
-            {status?.apiAccess === false && (
-              <p className="text-sm text-ink-soft">
-                Signed in, but Comfy Cloud hasn't enabled API access for this app yet — add a key
-                below to run generations.
-              </p>
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => disconnect.mutate(undefined, { onSuccess: onDone })}
-            disabled={disconnect.isPending}
-            className="ml-auto shrink-0 text-ink-faint hover:text-danger"
-          >
-            <IconBox>
-              <Unplug {...ICON} />
-            </IconBox>
-            Sign out
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <>
-      <Button
-        variant="primary"
-        onClick={() => connect.mutate()}
-        disabled={connect.isPending}
-        className="w-full"
-      >
-        <IconBox>
-          <Cloud {...ICON} />
-        </IconBox>
-        {connect.isPending ? 'Opening Comfy Cloud…' : 'Sign in with Comfy Cloud'}
-      </Button>
-      <p className="mt-2 text-sm text-ink-soft">
-        One click — signs in with your Comfy Cloud account, no key to copy. You'll need an active
-        plan.
-      </p>
-      {connect.error && (
-        <p className="mt-2 text-sm text-danger">{(connect.error as Error).message}</p>
-      )}
-    </>
-  )
-}
-
-/** Configure Comfy Cloud: one-click sign-in (preferred) or a pasted API key
- *  (fallback). The key is write-only — encrypted at rest, never returned, shown
- *  only as a masked hint. Saving takes effect on the next availability poll. */
+/** Configure the Comfy Cloud API key. Write-only: the saved value is encrypted
+ *  at rest and never returned — the field shows only a masked hint. Saving takes
+ *  effect on the next availability poll. */
 function CloudEngineDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   // Mounted (closed) from boot — fetch settings at open time, not mid-entrance.
   const { data: settings } = useSettings({ enabled: open })
   const updateKey = useUpdateCloudApiKey()
   const status = settings?.cloudApiKey
-  const oauth = settings?.cloudOauth
   const [draft, setDraft] = useState('')
 
   // Never seed the field with the secret (we don't have it) — start empty each open.
@@ -191,9 +116,6 @@ function CloudEngineDialog({ open, onClose }: { open: boolean; onClose: () => vo
   }
   const clear = () => updateKey.mutate(null, { onSuccess: onClose })
 
-  // The key is optional once a sign-in already grants API access.
-  const keyOptional = oauth?.connected && oauth.apiAccess === true
-
   return (
     <Dialog
       open={open}
@@ -202,14 +124,6 @@ function CloudEngineDialog({ open, onClose }: { open: boolean; onClose: () => vo
       subtitle="Run edits on Comfy Cloud — no local GPU required."
     >
       <div className="px-5 pb-5">
-        <CloudSignInSection status={oauth} onDone={onClose} />
-
-        <div className="my-5 flex items-center gap-3 text-sm text-ink-faint">
-          <span className="h-px flex-1 bg-line" />
-          {keyOptional ? 'API key (optional)' : 'or use an API key'}
-          <span className="h-px flex-1 bg-line" />
-        </div>
-
         <label htmlFor="cloud-api-key" className="mb-2 block text-sm font-medium text-ink-soft">
           API key
         </label>
@@ -222,6 +136,7 @@ function CloudEngineDialog({ open, onClose }: { open: boolean; onClose: () => vo
           placeholder={
             status?.configured ? `Key set (${status.masked}) — enter a new one to replace` : 'comfyui-…'
           }
+          autoFocus
           autoComplete="off"
           spellCheck={false}
           className="h-9 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm outline-none transition-colors placeholder:text-ink-faint focus:border-ink"
@@ -237,8 +152,7 @@ function CloudEngineDialog({ open, onClose }: { open: boolean; onClose: () => vo
             >
               platform.comfy.org
             </a>
-            . Needed for partner/API-node models (they bill to the key), and as a fallback if
-            sign-in can't reach the cloud API. Encrypted at rest and never leaves this machine.
+            . You'll need an active Comfy Cloud plan. Encrypted at rest and never leaves this machine.
           </p>
           {status?.source === 'env' && (
             <p>

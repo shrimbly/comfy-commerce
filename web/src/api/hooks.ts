@@ -189,25 +189,11 @@ export interface CloudApiKeyStatus {
   masked: string | null
 }
 
-/** Status of the "Sign in with Comfy Cloud" OAuth connection. */
-export interface CloudOAuthStatus {
-  connected: boolean
-  /**
-   * Whether the cloud REST API accepted the sign-in grant. False means signed
-   * in, but the cloud hasn't enabled API access for self-registered apps yet
-   * — generations still need an API key. Null when not connected.
-   */
-  apiAccess: boolean | null
-  email: string | null
-}
-
 export interface AppSettings {
   /** URL of the Remote ComfyUI engine, or null when unconfigured. */
   remoteComfyUrl: string | null
   /** Comfy Cloud API key status — write-only over the API. */
   cloudApiKey: CloudApiKeyStatus
-  /** Comfy Cloud sign-in status. */
-  cloudOauth: CloudOAuthStatus
 }
 
 export const useSettings = (opts?: { enabled?: boolean }) =>
@@ -240,29 +226,6 @@ export const useUpdateCloudApiKey = () => {
   return useMutation({
     mutationFn: (cloudApiKey: string | null) =>
       api.patch<AppSettings>('/api/settings', { cloudApiKey }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['settings'] })
-      void qc.invalidateQueries({ queryKey: ['providers'] })
-    },
-  })
-}
-
-/**
- * Begin "Sign in with Comfy Cloud": the broker readies the OAuth request and
- * returns the authorize URL; the caller navigates the browser there. The
- * flow returns to /connectors?connected= (or ?error=) via the broker callback.
- */
-export const useConnectComfyCloud = () =>
-  useMutation({
-    mutationFn: () => api.post<{ url: string }>('/api/connect/comfy', {}),
-    onSuccess: ({ url }) => window.location.assign(url),
-  })
-
-/** Sign out of Comfy Cloud (any saved API key is untouched). */
-export const useDisconnectComfyCloud = () => {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: () => api.delete('/api/connect/comfy'),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['settings'] })
       void qc.invalidateQueries({ queryKey: ['providers'] })

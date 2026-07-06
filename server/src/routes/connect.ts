@@ -106,37 +106,6 @@ export function registerConnectRoutes(app: FastifyInstance, ctx: AppContext): vo
     return { kind: 'connected' as const, store }
   })
 
-  /**
-   * "Sign in with Comfy Cloud" — the broker self-registers a public PKCE
-   * client, preflights the authorize request, and hands the browser the URL.
-   * The token exchange happens server-side in the callback below.
-   */
-  app.post('/api/connect/comfy', async (request, reply) => {
-    try {
-      return { url: await ctx.comfyAuth.beginConnect() }
-    } catch (err) {
-      request.log.error(err, 'Comfy Cloud connect failed to start')
-      return reply.status(502).send({ error: (err as Error).message })
-    }
-  })
-
-  app.get('/api/connect/comfy/callback', async (request, reply) => {
-    const query = request.query as Record<string, string>
-    try {
-      await ctx.comfyAuth.completeCallback(query)
-      return reply.redirect(`${env.webOrigin}/connectors?connected=${encodeURIComponent('Comfy Cloud')}`)
-    } catch (err) {
-      request.log.warn(err, 'Comfy Cloud sign-in failed')
-      return reply.redirect(`${env.webOrigin}/connectors?error=${encodeURIComponent((err as Error).message)}`)
-    }
-  })
-
-  /** Sign out of Comfy Cloud (the API key, if any, is untouched). */
-  app.delete('/api/connect/comfy', async () => {
-    ctx.comfyAuth.disconnect()
-    return { ok: true }
-  })
-
   app.get('/api/connect/shopify/callback', async (request, reply) => {
     const query = request.query as Record<string, string>
     const fail = (reason: string) =>

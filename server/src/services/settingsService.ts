@@ -9,45 +9,6 @@ import type { Env } from '../env.js'
 const REMOTE_COMFY_URL_KEY = 'comfy.remote.url'
 /** Settings key for the Comfy Cloud API key (a secret — never returned raw). */
 const CLOUD_API_KEY_KEY = 'comfy.cloud.apiKey'
-/** Settings key for the OAuth client minted via Dynamic Client Registration. */
-const CLOUD_OAUTH_CLIENT_KEY = 'comfy.cloud.oauth.client'
-/** Settings key for the OAuth token set (a secret — encrypted at rest). */
-const CLOUD_OAUTH_TOKENS_KEY = 'comfy.cloud.oauth.tokens'
-
-/**
- * The OAuth client the broker registered with Comfy Cloud. A public PKCE
- * client has no secret, so this is stored in plain text. Keyed by issuer +
- * redirect URI: if either changes (different cloud host, different broker
- * port), the client is re-registered rather than reused.
- */
-export interface ComfyOAuthClient {
-  clientId: string
-  issuer: string
-  redirectUri: string
-}
-
-/** The Comfy Cloud OAuth grant — tokens plus what they were verified to cover. */
-export interface ComfyOAuthStoredTokens {
-  accessToken: string
-  /** Epoch ms when the access token expires. */
-  expiresAt: number
-  refreshToken: string | null
-  scope: string | null
-  /** RFC 8707 resource the grant covers (the /api resource, or the MCP fallback). */
-  resource: string
-  /** Whether the cloud REST API accepted this grant when probed at connect time. */
-  apiAccess: boolean
-  /** Account email read at connect time — display only. */
-  email: string | null
-}
-
-/** Secret-safe view of the Comfy Cloud sign-in for the UI. */
-export interface CloudOAuthStatus {
-  connected: boolean
-  /** Null when not connected. */
-  apiAccess: boolean | null
-  email: string | null
-}
 
 /** Drop a single trailing slash so URL origins concatenate predictably. */
 function trimTrailingSlash(url: string): string {
@@ -158,51 +119,6 @@ export function createSettingsService(db: Db, env: Env) {
       const trimmed = key?.trim()
       setRaw(CLOUD_API_KEY_KEY, trimmed ? encryptSecret(trimmed, env.tokenEncryptionKey) : null)
       return this.getCloudApiKeyStatus()
-    },
-
-    /** The OAuth client registered with Comfy Cloud, if any (plain — no secret). */
-    getComfyOAuthClient(): ComfyOAuthClient | null {
-      const raw = getRaw(CLOUD_OAUTH_CLIENT_KEY)
-      if (!raw) return null
-      try {
-        return JSON.parse(raw) as ComfyOAuthClient
-      } catch {
-        return null
-      }
-    },
-
-    setComfyOAuthClient(client: ComfyOAuthClient | null): void {
-      setRaw(CLOUD_OAUTH_CLIENT_KEY, client ? JSON.stringify(client) : null)
-    },
-
-    /**
-     * The Comfy Cloud OAuth grant, decrypted — or null if unset or the stored
-     * ciphertext can't be decrypted (e.g. TOKEN_ENCRYPTION_KEY changed), in
-     * which case the user simply signs in again.
-     */
-    getComfyOAuthTokens(): ComfyOAuthStoredTokens | null {
-      const stored = getRaw(CLOUD_OAUTH_TOKENS_KEY)
-      if (!stored) return null
-      try {
-        return JSON.parse(decryptSecret(stored, env.tokenEncryptionKey)) as ComfyOAuthStoredTokens
-      } catch {
-        return null
-      }
-    },
-
-    /** Set (or clear, with null) the OAuth grant — encrypted at rest like the API key. */
-    setComfyOAuthTokens(tokens: ComfyOAuthStoredTokens | null): void {
-      setRaw(
-        CLOUD_OAUTH_TOKENS_KEY,
-        tokens ? encryptSecret(JSON.stringify(tokens), env.tokenEncryptionKey) : null,
-      )
-    },
-
-    /** Secret-safe status of the Comfy Cloud sign-in for the UI. */
-    getCloudOAuthStatus(): CloudOAuthStatus {
-      const tokens = this.getComfyOAuthTokens()
-      if (!tokens) return { connected: false, apiAccess: null, email: null }
-      return { connected: true, apiAccess: tokens.apiAccess, email: tokens.email }
     },
   }
 }

@@ -176,7 +176,7 @@ describe('app settings — Comfy Cloud API key', () => {
       json(res).providers.find((p: { id: string }) => p.id === 'comfy-cloud')
     const before = findCloud(await app.inject({ method: 'GET', url: '/api/providers' }))
     expect(before).toMatchObject({ kind: 'cloud', available: false })
-    expect(before.detail).toMatch(/sign in to comfy cloud or add an api key/i)
+    expect(before.detail).toMatch(/add a comfy cloud api key/i)
   })
 })
 

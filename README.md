@@ -45,14 +45,9 @@ I built this to demonstrate the flexibility of the ComfyUI as a developer platfo
 |:-------|:------|:------|
 | **Local ComfyUI** | run ComfyUI on `COMFY_LOCAL_URL` (default `:8188`) | Images never leave your machine; built-ins need a checkpoint installed |
 | **Remote ComfyUI** | set its URL on the Connectors page → Configure | A ComfyUI on another machine on your LAN or VPN |
-| **Comfy Cloud** | set an API key, or sign in with your Comfy account — both on Connectors → Comfy Cloud | Uses the [Comfy Cloud API](https://docs.comfy.org/development/cloud/overview); requires a paid plan |
+| **Comfy Cloud** | set `COMFY_CLOUD_API_KEY` | Uses the [Comfy Cloud API](https://docs.comfy.org/development/cloud/overview); requires a paid plan |
 
 Pick the engine per run; the Connectors page shows live availability.
-
-> **Sign in with Comfy Cloud** (OAuth) connects your account in one click — no key to paste. For now,
-> running generations still needs an API key: Comfy hasn't yet opened REST-API access to
-> self-registered apps. The Connectors page shows your sign-in status and whether API access is live,
-> and it upgrades itself automatically once Comfy grants that access.
 
 ## Download
 

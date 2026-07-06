@@ -2,9 +2,8 @@ import type { ProviderId, ProviderInfo } from '@comfy-commerce/shared'
 
 import type { Env } from '../env.js'
 import type { AssetStore } from '../services/assetStore.js'
-import type { ComfyAuthService } from '../services/comfyAuthService.js'
 import type { SettingsService } from '../services/settingsService.js'
-import { ComfyCloudProvider, type CloudAuth } from './comfyCloud.js'
+import { ComfyCloudProvider } from './comfyCloud.js'
 import { ComfyHttpProvider } from './comfyHttp.js'
 import { MockProvider } from './mock.js'
 import type { GenerationProvider } from './types.js'
@@ -15,25 +14,11 @@ export function createProviderRegistry(
   env: Env,
   assetStore: AssetStore,
   settings: SettingsService,
-  comfyAuth: ComfyAuthService,
 ) {
   // The Comfy Cloud key doubles as the comfy.org key API nodes authenticate
   // with. Resolve it fresh (UI value wins, env seed otherwise) so saving a key
   // in the UI takes effect everywhere with no restart.
   const resolveComfyOrgApiKey = () => settings.getCloudApiKey()
-
-  // Cloud transport: the OAuth sign-in wins when its grant works on the REST
-  // API; otherwise the personal key. The key still rides along for API-node
-  // billing (extra_data) either way.
-  const resolveCloudAuth = async (): Promise<CloudAuth | null> => {
-    const apiKey = settings.getCloudApiKey()
-    const oauth = await comfyAuth.getAccessToken()
-    if (oauth?.apiAccess) {
-      return { headers: { Authorization: `Bearer ${oauth.accessToken}` }, comfyOrgApiKey: apiKey }
-    }
-    if (apiKey) return { headers: { 'X-API-Key': apiKey }, comfyOrgApiKey: apiKey }
-    return null
-  }
   const providers: GenerationProvider[] = [
     new MockProvider(),
     new ComfyHttpProvider({
@@ -61,7 +46,7 @@ export function createProviderRegistry(
     }),
     new ComfyCloudProvider({
       apiUrl: env.comfyCloud.apiUrl,
-      resolveAuth: resolveCloudAuth,
+      resolveApiKey: () => settings.getCloudApiKey(),
       checkpoint: process.env.COMFY_CLOUD_CHECKPOINT,
       jobTimeoutMs: env.comfyCloud.jobTimeoutMs,
       assetStore,
@@ -79,10 +64,7 @@ export function createProviderRegistry(
   let infoCache: { key: string; at: number; value: Promise<ProviderInfo[]> } | null = null
   let infoRevalidating = false
 
-  const infoKey = () => {
-    const oauth = settings.getCloudOAuthStatus()
-    return `${settings.getRemoteComfyUrl() ?? ''}\n${settings.getCloudApiKey() ?? ''}\n${oauth.connected}:${oauth.apiAccess}`
-  }
+  const infoKey = () => `${settings.getRemoteComfyUrl() ?? ''}\n${settings.getCloudApiKey() ?? ''}`
 
   function probeInfo(): Promise<ProviderInfo[]> {
     return Promise.all(
