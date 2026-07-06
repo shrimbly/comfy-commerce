@@ -6,19 +6,15 @@
 
 ### AI Product-Media Studio for Shopify
 
-[![License](https://img.shields.io/badge/License-MIT-181818)](LICENSE)
 
 <br />
 
 Link a Shopify store and edit or create new product images, videos or 3D assets with ComfyUI,<br />
 review every change side-by-side, and publish approved results back to the live listing.<br />
 
-Local &nbsp;&bull;&nbsp; BYO Shopify app &nbsp;&bull;&nbsp; MIT
-
 <br />
 
-[**Shopify setup**](docs/SHOPIFY_SETUP.md) &nbsp;&bull;&nbsp; [API reference](docs/API.md) &nbsp;&bull;&nbsp; [Comfy Cloud](https://docs.comfy.org/development/cloud/overview)
-
+[**Shopify setup**](docs/SHOPIFY_SETUP.md) &nbsp;&bull;&nbsp; [API reference](docs/API.md) &nbsp;&bull;&nbsp; 
 <br />
 
 https://github.com/user-attachments/assets/46e76bd7-c635-4266-a998-9df7d28644f2
