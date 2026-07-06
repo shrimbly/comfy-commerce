@@ -28,6 +28,16 @@ POST /api/connect/shopify/token         → { kind: "connected", store }
      { shop, accessToken }                connect with a legacy custom-app
                                           Admin API token (shpat_…) — verified,
                                           scope-checked, encrypted at rest
+
+POST   /api/connect/comfy               → { url }   begin "Sign in with Comfy Cloud"
+                                          (OAuth 2.0 + PKCE, run server-side by the
+                                          broker); open the url in a browser to authorize
+GET    /api/connect/comfy/callback        OAuth redirect target — exchanges the code,
+                                          stores the encrypted grant, then redirects to
+                                          /connectors?connected|error (browser, not JSON)
+DELETE /api/connect/comfy               → { ok }    sign out of Comfy Cloud
+                                          (any saved API key is left untouched)
+
 GET  /api/stores                        → { stores: ConnectedStore[] }
 DELETE /api/stores/:id                    removes the store + its staging items, runs,
                                           AI captions/tags, and audit history
@@ -177,7 +187,8 @@ GET /api/audit?storeId=…   → { entries }   stage/approve/publish/revert/conn
 ## Other endpoints
 
 ```
-GET/PATCH /api/settings                     broker settings (engine URLs, cloud key, …)
+GET/PATCH /api/settings                     broker settings (engine URLs, Comfy Cloud key +
+                                            sign-in status, …)
 GET/POST  /api/prompts                      prompt library; PATCH/DELETE /api/prompts/:id
 POST /api/assets                            upload media bytes → { id, url }
 GET  /api/assets/:id                        serve an asset (read-only; exempt from the token gate)
