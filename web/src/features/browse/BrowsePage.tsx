@@ -1,5 +1,5 @@
 import type { MediaItem, Product, RunTarget } from '@comfy-commerce/shared'
-import { Check, ICON, IconBox, Images, LayoutGrid, List, Play, RefreshCw, Rows3, Search, Sparkles } from '../../lib/icons.js'
+import { Check, ChevronLeft, ChevronRight, ICON, IconBox, Images, LayoutGrid, List, Play, RefreshCw, Rows3, Search, Sparkles } from '../../lib/icons.js'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
@@ -31,6 +31,49 @@ const VIEW_OPTIONS: SegmentedOption<ViewMode>[] = [
   { value: 'grid', label: 'Grid', icon: <LayoutGrid {...ICON} /> },
   { value: 'list', label: 'List', icon: <List {...ICON} /> },
 ]
+
+// Products shown per page — keeps a large catalog from rendering and decoding
+// its whole grid at once, for a lighter first paint.
+const PAGE_SIZE = 12
+
+/** Shared style for the pagination prev/next controls. */
+const PAGE_NAV_BUTTON =
+  'flex size-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-surface hover:text-ink cursor-pointer disabled:pointer-events-none disabled:opacity-40'
+
+function PaginationBar({
+  page,
+  pageCount,
+  total,
+  onChange,
+}: {
+  page: number
+  pageCount: number
+  total: number
+  onChange: (page: number) => void
+}) {
+  return (
+    <div className="flex items-center justify-between border-t border-line bg-surface-2 px-4 py-2.5">
+      <span className="text-sm text-ink-faint">
+        {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total} products
+      </span>
+      <div className="flex items-center gap-1">
+        <button onClick={() => onChange(page - 1)} disabled={page === 0} aria-label="Previous page" className={PAGE_NAV_BUTTON}>
+          <IconBox>
+            <ChevronLeft {...ICON} />
+          </IconBox>
+        </button>
+        <span className="px-1 text-sm tabular-nums text-ink-soft">
+          {page + 1} / {pageCount}
+        </span>
+        <button onClick={() => onChange(page + 1)} disabled={page >= pageCount - 1} aria-label="Next page" className={PAGE_NAV_BUTTON}>
+          <IconBox>
+            <ChevronRight {...ICON} />
+          </IconBox>
+        </button>
+      </div>
+    </div>
+  )
+}
 
 function selectionsOf(product: Product, media: MediaItem[]): Selection[] {
   return media.map((m) => ({
@@ -74,6 +117,7 @@ export function BrowsePage() {
     () => (localStorage.getItem('cc-browse-view') as ViewMode | null) ?? 'grouped',
   )
   useEffect(() => localStorage.setItem('cc-browse-view', view), [view])
+  const [page, setPage] = useState(0)
 
   // Media-first search: a query keeps only the images that match (by caption or
   // AI tags), so results are about the media, not the product. A product matched
@@ -111,6 +155,15 @@ export function BrowsePage() {
     [filtered],
   )
   const filtering = query.trim() !== '' || collectionId !== 'all' || tag !== 'all'
+
+  // Pagination. Only the current page's products are rendered; selection,
+  // inspector, and counts still operate over the full filtered set.
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, pageCount - 1)
+  const paged = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE)
+  // Snap back to the first page whenever the result set changes (search, filters,
+  // or store switch) so you're never stranded past the last page.
+  useEffect(() => setPage(0), [query, collectionId, tag, activeStore?.id])
 
   if (!activeStore) {
     return (
@@ -413,7 +466,7 @@ export function BrowsePage() {
               animate="animate"
               className="space-y-6 p-5"
             >
-              {filtered.map(({ product, media }) => (
+              {paged.map(({ product, media }) => (
                 <motion.section key={product.id} variants={staggerChild}>
                   <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -454,7 +507,7 @@ export function BrowsePage() {
               animate="animate"
               className="grid grid-cols-3 gap-3 p-5 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7"
             >
-              {filtered.flatMap(({ product, media }) =>
+              {paged.flatMap(({ product, media }) =>
                 media.map((m) => (
                   <motion.div key={m.id} variants={staggerChild}>
                     {mediaTile(product, m)}
@@ -469,7 +522,7 @@ export function BrowsePage() {
               animate="animate"
               className="space-y-1 p-3"
             >
-              {filtered.map(({ product, media }) => {
+              {paged.map(({ product, media }) => {
                 const selections = selectionsOf(product, media)
                 const selectedCount = selections.filter((s) => selected.has(s.mediaId)).length
                 const allSelected = selectedCount > 0 && selectedCount === selections.length
@@ -526,6 +579,10 @@ export function BrowsePage() {
                 )
               })}
             </motion.ul>
+          )}
+
+          {pageCount > 1 && (
+            <PaginationBar page={safePage} pageCount={pageCount} total={filtered.length} onChange={setPage} />
           )}
         </div>
       )}
