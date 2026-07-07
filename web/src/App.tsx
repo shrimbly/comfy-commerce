@@ -2,7 +2,7 @@ import type { Catalog } from './api/hooks.js'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
 import type { ComponentType } from 'react'
-import { Suspense, lazy, useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router'
 
 import { prefetchCatalog, prefetchWorkflows } from './api/hooks.js'
@@ -76,8 +76,30 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 })
 
+/** Freeze an element at its current rendered width (kept centered), so an
+ *  ancestor width animation no longer reflows it. */
+function pinWidth(el: HTMLElement) {
+  el.style.width = `${el.offsetWidth}px`
+  el.style.maxWidth = 'none'
+  el.style.justifySelf = 'center'
+}
+
 function AnimatedRoutes() {
   const location = useLocation()
+  const prevPathRef = useRef(location.pathname)
+
+  // Pin the OUTGOING page's width the moment it starts exiting. Otherwise the
+  // shell's width animation reflows its image grid every frame, and reflowing
+  // under the exit blur is what strobed on Retina. The fading page blurs out at
+  // its width instead of shrinking too; the incoming page still resizes as
+  // before, and height/scroll are untouched.
+  useLayoutEffect(() => {
+    if (prevPathRef.current === location.pathname) return
+    const outgoing = document.querySelector<HTMLElement>(`[data-route="${CSS.escape(prevPathRef.current)}"]`)
+    if (outgoing) pinWidth(outgoing)
+    prevPathRef.current = location.pathname
+  }, [location.pathname])
+
   return (
     // Single-cell grid: the outgoing and incoming pages share one cell
     // ([grid-area:1/1]) and blur-cross-dissolve — the old page defocuses + fades
@@ -87,10 +109,16 @@ function AnimatedRoutes() {
     // actions (useIsPresent); the incoming CTA sharpens in with its page (the
     // parent blur filter applies to it too). AnimatePresence freezes the exiting
     // element, so it keeps rendering its own (old) route.
-    <div className="grid">
+    //
+    // grid-cols-1 (minmax(0,1fr)) + min-w-0 stop the pinned-width outgoing page
+    // (see pinWidth above) from dragging the shared column wide via min-content —
+    // so the incoming page resizes to its real target while the frozen page just
+    // overflows the column as it fades.
+    <div className="grid grid-cols-1 min-w-0">
       <AnimatePresence initial={false}>
         <motion.div
           key={location.pathname}
+          data-route={location.pathname}
           className="[grid-area:1/1] min-w-0 will-change-[filter,opacity]"
           initial={{ opacity: 0, filter: 'blur(8px)' }}
           animate={{ opacity: 1, filter: 'blur(0px)' }}
