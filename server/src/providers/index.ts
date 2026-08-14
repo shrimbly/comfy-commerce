@@ -44,10 +44,12 @@ export function createProviderRegistry(
       jobTimeoutMs: env.comfyJobTimeoutMs,
       assetStore,
     }),
+    // Runs on @comfyorg/sdk against the Comfy API v2 (see comfySdk.ts). No
+    // checkpoint option: nothing in the execution path picks one — every run
+    // patches an uploaded graph that already names its own models.
     new ComfyCloudProvider({
       apiUrl: env.comfyCloud.apiUrl,
       resolveApiKey: () => settings.getCloudApiKey(),
-      checkpoint: process.env.COMFY_CLOUD_CHECKPOINT,
       jobTimeoutMs: env.comfyCloud.jobTimeoutMs,
       assetStore,
     }),

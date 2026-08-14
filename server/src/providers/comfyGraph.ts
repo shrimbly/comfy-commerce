@@ -34,7 +34,7 @@ export function buildCaptionGraph(
   // Comfy (local/Cloud) serves entirely from cache — and a fully cached job
   // surfaces no text. A run-varying seed forces a real execution each time.
   seed: number,
-): { graph: Record<string, unknown>; sinkNodeId: string } {
+): { graph: Record<string, unknown>; inputNodeId: string; sinkNodeId: string } {
   const graph: Record<string, unknown> = {
     '1': { class_type: 'LoadImage', inputs: { image: imageName } },
     // ~1 MP keeps ample detail for captioning while staying under Gemini's limit.
@@ -50,7 +50,7 @@ export function buildCaptionGraph(
     // outputs as outputs[sink].text.
     '4': { class_type: 'PreviewAny', inputs: { source: ['3', 0] } },
   }
-  return { graph, sinkNodeId: '4' }
+  return { graph, inputNodeId: '1', sinkNodeId: '4' }
 }
 
 /**
@@ -82,7 +82,12 @@ export async function buildExecutionGraph(
     /** Uploaded fixed reference images, node→filename (from uploadFixedImages). */
     fixedImages?: Array<{ nodeId: string; imageName: string }>
     seedKey: string
-    resolveCheckpoint: () => Promise<string>
+    /**
+     * Unused today — every execution path patches an uploaded graph rather
+     * than synthesising an img2img one, so no checkpoint is chosen here. Kept
+     * optional for the engines that still resolve one for their own purposes.
+     */
+    resolveCheckpoint?: () => Promise<string>
   },
 ): Promise<Record<string, unknown>> {
   const seed = hashSeed(opts.seedKey)

@@ -34,8 +34,8 @@ through `approved`. If a change touches staging, update the broker service and t
 
 **Prerequisites**
 
-- Node **≥ 20** and **pnpm 10.27** (pinned via `packageManager` in `package.json` — use
-  `corepack enable` to get the right version).
+- Node **≥ 22** (the floor `@comfyorg/sdk` sets) and **pnpm 10.27** (pinned via `packageManager` in
+  `package.json` — use `corepack enable` to get the right version).
 - Optional, for real generation: a **local ComfyUI** on `http://127.0.0.1:8188`, and/or a
   **Comfy Cloud** API key. Without either, the built-in **mock engine** runs the whole pipeline
   instantly so the app is fully testable offline.
@@ -120,6 +120,28 @@ docs/API.md       The headless REST contract.
 Connectors implement `StoreConnector` (`server/src/connectors/types.ts`); generation engines
 implement `GenerationProvider` (`server/src/providers/types.ts`). Both are pluggable — add a new
 file and register it, don't fork the orchestration.
+
+### The two engine protocols
+
+There are two different Comfy APIs behind the three real engines, and which one an engine speaks
+decides where its code lives:
+
+- **Comfy API v2** (`/api/v2/jobs`, `/api/v2/assets`) — **Comfy Cloud**. Driven by the official
+  [`@comfyorg/sdk`](https://github.com/Comfy-Org/comfy-typescript-sdk); the glue is
+  `providers/comfySdk.ts` and the provider is `providers/comfyCloud.ts`. Do **not** hand-roll
+  requests against this surface — the SDK already owns asset upload (blake3 hash → server dedup →
+  multipart only when the bytes are new), `core/ASSET` substitution into the graph, idempotent
+  submit with `queue_full` backoff, adaptive poll-to-terminal, range-aware output download, and
+  typed errors. `comfySdk.ts` adds only what the SDK can't know: our media-type mapping and the
+  error wording `isRetryableRunError` classifies on.
+- **The classic ComfyUI API** (`/prompt`, `/history`, `/view`, `/object_info`) — **local and remote
+  ComfyUI**, in `providers/comfyHttp.ts`. A raw ComfyUI does not serve v2, so the SDK cannot drive
+  it; pointing one at the SDK means running
+  [`comfy-api-proxy`](https://github.com/Comfy-Org/comfy-api-proxy) in front of it and configuring
+  it as the Cloud engine's `COMFY_CLOUD_API_URL` (no key needed).
+
+Node-catalog probing for workflow compatibility (`workflows/service.ts`) still hits `/object_info`
+directly on every engine — that endpoint has no v2 equivalent and is outside the SDK's surface.
 
 ## Workflows — the agent's main job
 

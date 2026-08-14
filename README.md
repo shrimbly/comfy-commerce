@@ -45,7 +45,7 @@ I built this to demonstrate the flexibility of the ComfyUI as a developer platfo
 |:-------|:------|:------|
 | **Local ComfyUI** | run ComfyUI on `COMFY_LOCAL_URL` (default `:8188`) | Images never leave your machine; built-ins need a checkpoint installed |
 | **Remote ComfyUI** | set its URL on the Connectors page → Configure | A ComfyUI on another machine on your LAN or VPN |
-| **Comfy Cloud** | set `COMFY_CLOUD_API_KEY` | Uses the [Comfy Cloud API](https://docs.comfy.org/development/cloud/overview); requires a paid plan |
+| **Comfy Cloud** | set `COMFY_CLOUD_API_KEY` | Runs on the official [`@comfyorg/sdk`](https://github.com/Comfy-Org/comfy-typescript-sdk) against the [Comfy API v2](https://docs.comfy.org/development/cloud/overview); requires a paid plan |
 
 Pick the engine per run; the Connectors page shows live availability.
 
@@ -67,7 +67,7 @@ auto-update yet; grab a newer release to upgrade.
 
 ## Build from source
 
-Requires Node.js **≥ 20** and [pnpm](https://pnpm.io) **10+** (`corepack enable`).
+Requires Node.js **≥ 22** (the Comfy SDK's floor) and [pnpm](https://pnpm.io) **10+** (`corepack enable`).
 
 ```bash
 pnpm install
